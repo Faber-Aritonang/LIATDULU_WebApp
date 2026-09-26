@@ -58,6 +58,26 @@ export default function ResultCanvas({ imageUrl, onRegenerate, onDownload }) {
     setIsDragging(false);
   };
 
+  const renderImage = () => {
+    if (!canvasRef.current || !imgRef.current) return;
+    const ctx = canvasRef.current.getContext('2d');
+    const { width, height } = canvasRef.current;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Apply transform
+    ctx.save();
+    ctx.translate(width / 2 + position.x * scale, height / 2 + position.y * scale);
+    ctx.scale(scale, scale);
+    ctx.translate(-width / 2, -height / 2);
+
+    // Draw image
+    const img = imgRef.current;
+    ctx.drawImage(img, 0, 0, width, height);
+    ctx.restore();
+  };
+
   if (!imageUrl) {
     return (
       <div className="result-canvas empty">
@@ -119,24 +139,4 @@ export default function ResultCanvas({ imageUrl, onRegenerate, onDownload }) {
       </div>
     </div>
   );
-
-  function renderImage() {
-    if (!canvasRef.current || !imgRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const { width, height } = canvasRef.current;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
-
-    // Apply transform
-    ctx.save();
-    ctx.translate(width / 2 + position.x * scale, height / 2 + position.y * scale);
-    ctx.scale(scale, scale);
-    ctx.translate(-width / 2, -height / 2);
-
-    // Draw image
-    const img = imgRef.current;
-    ctx.drawImage(img, 0, 0, width, height);
-    ctx.restore();
-  }
 }

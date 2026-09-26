@@ -8,15 +8,13 @@ import sharp from 'sharp';
 import { GRID_CONFIG, IMAGE_CONSTRAINTS } from '../src/lib/constants.js';
 
 /**
- * Image information result from validation
+ * @typedef {Object} ImageInfo
+ * @property {boolean} valid
+ * @property {number} width
+ * @property {number} height
+ * @property {string} format
+ * @property {string} [error]
  */
-export interface ImageInfo {
-  valid: boolean;
-  width: number;
-  height: number;
-  format: string;
-  error?: string;
-}
 
 /**
  * Validate an image buffer
@@ -165,7 +163,6 @@ export async function createCompositeImage(imageBuffers, options = {}) {
   return await composite.jpeg({ quality: 92, background: { r: 0, g: 0, b: 0 } }).toBuffer();
 }
 
-/**
 /**
  * Trim black bars from an image buffer
  * 

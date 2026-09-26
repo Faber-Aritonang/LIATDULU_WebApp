@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import useHistory from '../hooks/useHistory.js';
+import useAuth from '../hooks/useAuth.js';
 
 export default function HistoryPanel() {
   const { user, isAuthenticated } = useAuth();

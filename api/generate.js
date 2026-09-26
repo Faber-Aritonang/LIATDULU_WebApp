@@ -8,10 +8,12 @@
 
 import formidable from 'formidable';
 import { promises as fs } from 'fs';
-import { 
-  validateImageBuffer, 
-  createCompositeImage, 
-  trimBlackBars 
+import {
+  validateImageBuffer,
+  createCompositeImage,
+  trimBlackBars,
+  dataURLToBuffer,
+  bufferToDataURL
 } from './_lib/imageProcessor.js';
 import { generateFitting, getSizeFromRatio } from './_lib/bynara.js';
 import { checkRateLimit } from './_lib/rateLimit.js';
@@ -168,19 +170,18 @@ export default async function handler(req, res) {
     });
 
     // 11. Trim black bars from result
-    // Note: Bynara returns base64, we need to decode and process
     const trimmedUrl = await trimBlackBarsFromBase64(resultUrl);
 
     // 12. Save to Vercel Blob
-    const saveResult = await saveResult(trimmedUrl, userId || 'anonymous');
+    const savedResult = await saveResult(trimmedUrl, userId || 'anonymous');
 
     // 13. Save to history (if user authenticated)
     let historyId = null;
     if (userId) {
       const historyEntry = await addHistory({
         userId,
-        resultUrl: saveResult.url,
-        blobPath: saveResult.pathname,
+        resultUrl: savedResult.url,
+        blobPath: savedResult.pathname,
         ratio,
         productCount: productFiles.length
       });
@@ -200,12 +201,12 @@ export default async function handler(req, res) {
     // Return success response
     res.status(200).json({
       success: true,
-      imageUrl: saveResult.url,
+      imageUrl: savedResult.url,
       historyId,
       data: {
         ratio,
         productCount: productFiles.length,
-        blobPath: saveResult.pathname
+        blobPath: savedResult.pathname
       }
     });
 
@@ -234,14 +235,17 @@ export default async function handler(req, res) {
 
 /**
  * Trim black bars from base64 image result
- * 
+ *
  * @param {string} base64Url - Base64 data URL
  * @returns {Promise<string>} Trimmed base64 data URL
  */
 async function trimBlackBarsFromBase64(base64Url) {
-  // For server-side, we'll use a simpler approach
-  // The Bynara result should already be properly sized
-  // Just return as-is for now - can be improved later
-  // Sharp would be needed for proper server-side trimming
-  return base64Url;
+  try {
+    const buffer = dataURLToBuffer(base64Url);
+    const trimmedBuffer = await trimBlackBars(buffer);
+    return bufferToDataURL(trimmedBuffer, 'image/jpeg');
+  } catch (error) {
+    console.error('Failed to trim black bars:', error);
+    return base64Url;
+  }
 }

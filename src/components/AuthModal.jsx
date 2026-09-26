@@ -11,26 +11,26 @@ export default function AuthModal({ isOpen, onClose }) {
   const [email, setEmail] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
-  const [useAuth] = useAuth();
+  const { signIn } = useAuth();
 
   const handleGoogleSignIn = async () => {
-    useAuth.signIn.google();
+    signIn.google();
     onClose && onClose();
   };
 
   const handleEmailSignIn = async (e) => {
     e.preventDefault();
     setEmailError('');
-    
+
     if (!email) {
       setEmailError('Email wajib diisi');
       return;
     }
 
     setEmailLoading(true);
-    
+
     try {
-      await useAuth.signIn.email(email);
+      await signIn.email(email);
     } catch (err) {
       setEmailError(err.message || 'Gagal mengirim magic link');
     } finally {

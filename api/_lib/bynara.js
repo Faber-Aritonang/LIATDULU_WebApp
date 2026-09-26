@@ -5,7 +5,14 @@
  */
 
 import { BynaraAPIError } from './errors.js';
-import { RATIO_TO_SIZE } from '../../src/lib/constants.js';
+
+// Map ratio to Bynara API size (duplicated from frontend constants to avoid cross-import)
+const RATIO_TO_SIZE = {
+  '9:16': '1024x1536',
+  '3:4': '1024x1280',
+  '1:1': '1024x1024',
+  '16:9': '1536x1024'
+};
 
 // Bynara API configuration
 const BYNARA_API_BASE = 'https://api-images.bynara.id/v1/images';

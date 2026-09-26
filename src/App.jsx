@@ -1,10 +1,11 @@
 /**
  * LIATDULU - Main App Component
- * 
+ *
  * Main application component that integrates all modules
  */
 
 import React, { useState, useCallback } from 'react';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import UploadZone from './components/UploadZone.jsx';
 import ProductGrid from './components/ProductGrid.jsx';
 import RatioSelector from './components/RatioSelector.jsx';
@@ -12,6 +13,7 @@ import ResultCanvas from './components/ResultCanvas.jsx';
 import Toast, { ToastContainer } from './components/Toast.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import HistoryPanel from './components/HistoryPanel.jsx';
+import { ResultCanvasSkeleton } from './components/Skeleton.jsx';
 import useGenerate from './hooks/useGenerate.js';
 import useAuth from './hooks/useAuth.js';
 import { MAX_PRODUCTS, DEFAULT_SETTINGS, ERROR_MESSAGES } from './lib/constants.js';
@@ -122,81 +124,93 @@ function App() {
   }, [isAuthenticated, signOut]);
 
   return (
-    <div className="app">
-      {/* Header */}
-      <header className="app-header">
-        <h1>LIATDULU</h1>
-        <p className="app-subtitle">Virtual Fitting Room</p>
-        <button className="auth-button" onClick={handleAuthClick}>
-          {isAuthenticated ? `👋 ${user?.name || 'Masuk'}` : '🔐 Masuk'}
-        </button>
-      </header>
-
-      {/* Main Content */}
-      <main className="app-main">
-        <div className="upload-section">
-          <UploadZone
-            modelFile={modelFile}
-            productFiles={productFiles}
-            onModelUpload={handleModelUpload}
-            onProductUpload={handleProductUpload}
-            onReset={handleReset}
-          />
-        </div>
-
-        <div className="product-section">
-          <ProductGrid
-            products={productFiles}
-            onRemove={handleRemoveProduct}
-          />
-        </div>
-
-        <div className="controls-section">
-          <RatioSelector
-            value={selectedRatio}
-            onChange={handleRatioChange}
-          />
-          
-          <button
-            className="generate-button"
-            onClick={handleGenerate}
-            disabled={status === 'processing' || productFiles.length === 0}
-          >
-            {status === 'processing' ? '⏳ Sedang diproses...' : '🎯 Buat Hasil Fitting'}
+    <ErrorBoundary>
+      <div className="app">
+        {/* Header */}
+        <header className="app-header">
+          <div>
+            <h1>LIATDULU</h1>
+            <p className="app-subtitle">Virtual Fitting Room</p>
+          </div>
+          <button className="auth-button" onClick={handleAuthClick}>
+            {isAuthenticated ? `👋 ${user?.name || 'Masuk'}` : '🔐 Masuk'}
           </button>
-        </div>
+        </header>
 
-        <div className="result-section">
-          {result?.imageUrl && (
-            <ResultCanvas
-              imageUrl={result.imageUrl}
-              onRegenerate={handleRegenerate}
-              onDownload={handleDownload}
+        {/* Main Content */}
+        <main className="app-main">
+          <div className="upload-section">
+            <UploadZone
+              modelFile={modelFile}
+              productFiles={productFiles}
+              onModelUpload={handleModelUpload}
+              onProductUpload={handleProductUpload}
+              onReset={handleReset}
             />
-          )}
-        </div>
-      </main>
+          </div>
 
-      {/* History Panel */}
-      <HistoryPanel />
+          <div className="product-section">
+            <ProductGrid
+              products={productFiles}
+              onRemove={handleRemoveProduct}
+            />
+          </div>
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+          <div className="controls-section">
+            <RatioSelector
+              value={selectedRatio}
+              onChange={handleRatioChange}
+            />
 
-      {/* Toast Container */}
-      <ToastContainer />
+            <button
+              className="generate-button"
+              onClick={handleGenerate}
+              disabled={status === 'processing' || productFiles.length === 0}
+            >
+              {status === 'processing' ? '⏳ Sedang diproses...' : '🎯 Buat Hasil Fitting'}
+            </button>
+          </div>
 
-      {/* Progress indicator */}
-      {status === 'processing' && (
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: progressMessage ? '100%' : '0%' }}></div>
-          <div className="progress-message">{progressMessage}</div>
-        </div>
-      )}
-    </div>
+          <div className="result-section">
+            <ErrorBoundary>
+              {status === 'processing' ? (
+                <ResultCanvasSkeleton />
+              ) : result?.imageUrl ? (
+                <ResultCanvas
+                  imageUrl={result.imageUrl}
+                  onRegenerate={handleRegenerate}
+                  onDownload={handleDownload}
+                />
+              ) : (
+                <ResultCanvas imageUrl={null} />
+              )}
+            </ErrorBoundary>
+          </div>
+        </main>
+
+        {/* History Panel */}
+        <ErrorBoundary>
+          <HistoryPanel />
+        </ErrorBoundary>
+
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
+
+        {/* Toast Container */}
+        <ToastContainer />
+
+        {/* Progress indicator */}
+        {status === 'processing' && (
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: progressMessage ? '100%' : '0%' }}></div>
+            <div className="progress-message">{progressMessage}</div>
+          </div>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
 

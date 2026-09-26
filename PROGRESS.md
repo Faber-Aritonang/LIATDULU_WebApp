@@ -63,10 +63,10 @@
 - [x] `src/components/HistoryPanel.jsx` — History panel component
 
 ## Phase 5: Polish & Deploy
-- [ ] vercel.json konfigurasi final
-- [ ] Error boundaries di React
-- [ ] Loading skeleton states
-- [ ] Mobile responsive final check
+- [x] vercel.json konfigurasi final
+- [x] Error boundaries di React
+- [x] Loading skeleton states
+- [x] Mobile responsive final check
 - [ ] Deploy ke Vercel production
 - [ ] Custom domain (opsional)
 

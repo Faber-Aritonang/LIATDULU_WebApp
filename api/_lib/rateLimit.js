@@ -41,8 +41,8 @@ export async function checkRateLimit({ identifier, max, window: windowSeconds })
 
   try {
     // Try to use KV for rate limiting if available
-    const kvUrl = getEnv().kvUrl();
-    const kvToken = getEnv().kvToken();
+    const kvUrl = getEnv.kvUrl();
+    const kvToken = getEnv.kvToken();
     
     if (kvUrl && kvToken) {
       return await checkRateLimitKV(key, limit, windowMs, resetAt, kvUrl, kvToken);

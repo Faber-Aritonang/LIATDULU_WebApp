@@ -12,12 +12,23 @@ import RatioSelector from './components/RatioSelector.jsx';
 import ResultCanvas from './components/ResultCanvas.jsx';
 import Toast, { ToastContainer } from './components/Toast.jsx';
 import AuthModal from './components/AuthModal.jsx';
+import AuthSignIn from './components/AuthSignIn.jsx';
+import AuthError from './components/AuthError.jsx';
 import HistoryPanel from './components/HistoryPanel.jsx';
 import { ResultCanvasSkeleton } from './components/Skeleton.jsx';
 import useGenerate from './hooks/useGenerate.js';
 import useAuth from './hooks/useAuth.js';
 import { MAX_PRODUCTS, DEFAULT_SETTINGS, ERROR_MESSAGES } from './lib/constants.js';
 import { fileToBase64, blobToFile } from './lib/fileHelpers.js';
+
+/**
+ * Simple client-side router
+ * Handles /auth/signin and /auth/error routes
+ */
+function useRouter() {
+  const path = window.location.pathname;
+  return { path };
+}
 
 function App() {
   // State management
@@ -26,10 +37,19 @@ function App() {
   const [productFiles, setProductFiles] = useState([]);
   const [selectedRatio, setSelectedRatio] = useState(DEFAULT_SETTINGS.ratio);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
+
   // Hooks
   const { generate, result, status, progressMessage, error, reset } = useGenerate();
   const { user, isAuthenticated, signIn, signOut } = useAuth();
+  const { path } = useRouter();
+
+  // Route handling for auth pages
+  if (path === '/auth/signin') {
+    return <AuthSignIn />;
+  }
+  if (path === '/auth/error') {
+    return <AuthError />;
+  }
 
   /**
    * Handle model image upload
@@ -128,9 +148,14 @@ function App() {
       <div className="app">
         {/* Header */}
         <header className="app-header">
-          <div>
-            <h1>LIATDULU</h1>
-            <p className="app-subtitle">Virtual Fitting Room</p>
+          <div className="app-header-left">
+            <a href="/" className="back-link" title="Kembali ke Landing Page">
+              ← Beranda
+            </a>
+            <div>
+              <h1>LIATDULU</h1>
+              <p className="app-subtitle">Virtual Fitting Room</p>
+            </div>
           </div>
           <button className="auth-button" onClick={handleAuthClick}>
             {isAuthenticated ? `👋 ${user?.name || 'Masuk'}` : '🔐 Masuk'}

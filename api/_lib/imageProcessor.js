@@ -5,7 +5,7 @@
  */
 
 import sharp from 'sharp';
-import { GRID_CONFIG, IMAGE_CONSTRAINTS } from '../src/lib/constants.js';
+import { GRID_CONFIG, IMAGE_CONSTRAINTS } from './constants.js';
 
 /**
  * @typedef {Object} ImageInfo

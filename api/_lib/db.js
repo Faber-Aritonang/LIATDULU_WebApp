@@ -21,7 +21,7 @@ async function getPool() {
     // Dynamic import of pg
     const { Pool } = await import('pg');
     
-    const connectionString = getEnv().postgresUrl();
+    const connectionString = getEnv.postgresUrl();
     
     if (!connectionString) {
       throw new DatabaseError('POSTGRES_URL not configured', null);
@@ -247,6 +247,9 @@ export async function closePool() {
   }
 }
 
+// Export getPool for health checks
+export { getPool };
+
 // Export default
 export default {
   upsertUser,
@@ -256,5 +259,6 @@ export default {
   getHistory,
   deleteHistory,
   getHistoryCount,
+  getPool,
   closePool
 };

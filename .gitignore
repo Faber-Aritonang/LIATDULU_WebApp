@@ -21,6 +21,9 @@ dist/
 .DS_Store
 Thumbs.db
 
+# LibreOffice lock files
+.~lock.*#
+
 # Logs
 *.log
 npm-debug.log*
@@ -35,3 +38,4 @@ coverage/
 # Vercel local
 .local/
 .vercel
+.env*

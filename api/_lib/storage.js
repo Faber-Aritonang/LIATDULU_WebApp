@@ -1,19 +1,20 @@
 /**
  * LIATDULU - Storage Module
- * 
- * Wraps Vercel Blob storage for saving and retrieving fitting results
+ *
+ * Wraps Vercel Blob storage (official @vercel/blob client) for saving
+ * and retrieving fitting results
  */
 
+import { put, del, head } from '@vercel/blob';
 import { StorageError } from './errors.js';
 import { getEnv, BLOB_CONFIG } from './env.js';
 
 // Blob storage base path
 const BLOB_BASE_PATH = BLOB_CONFIG.basePath;
-const blobBaseUrl = BLOB_CONFIG.baseUrl;
 
 /**
  * Save result image to Vercel Blob storage
- * 
+ *
  * @param {string} base64DataURL - Base64 data URL of the image
  * @param {string} [userId] - Optional user ID for organizing files
  * @returns {Promise<{url: string, pathname: string}>} Object with URL and pathname
@@ -38,35 +39,23 @@ export async function saveResult(base64DataURL, userId) {
     const pathname = `${BLOB_BASE_PATH}/${prefix}.png`;
 
     // Get blob token
-    const blobToken = getEnv().blobToken();
+    const blobToken = getEnv.blobToken();
 
-    // Upload to Vercel Blob
     if (!blobToken) {
       throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'saveResult');
     }
 
-    const response = await fetch(blobBaseUrl + '/' + encodeURIComponent(pathname), {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${blobToken}`,
-        'Content-Type': mimeType
-      },
-      body: buffer
+    // Upload via official client
+    const uploadResult = await put(pathname, buffer, {
+      access: 'public',
+      contentType: `image/${mimeType}`,
+      addRandomSuffix: false,
+      token: blobToken
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new StorageError(
-        `Failed to upload to Blob: ${response.status} ${errorText}`,
-        'saveResult'
-      );
-    }
-
-    const uploadResult = await response.json();
-
     return {
-      url: uploadResult.url || `${blobBaseUrl}/${pathname}`,
-      pathname
+      url: uploadResult.url,
+      pathname: uploadResult.pathname || pathname
     };
 
   } catch (error) {
@@ -79,35 +68,20 @@ export async function saveResult(base64DataURL, userId) {
 
 /**
  * Delete a file from Vercel Blob storage
- * 
- * @param {string} pathname - Path/name of the file to delete
+ *
+ * @param {string} pathnameOrUrl - Path/name or full URL of the file to delete
  * @returns {Promise<void>}
  * @throws {StorageError} If deletion fails
  */
-export async function deleteResult(pathname) {
+export async function deleteResult(pathnameOrUrl) {
   try {
-    const blobToken = getEnv().blobToken();
+    const blobToken = getEnv.blobToken();
 
     if (!blobToken) {
       throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'deleteResult');
     }
 
-    const response = await fetch(
-      blobBaseUrl + '/' + encodeURIComponent(pathname),
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${blobToken}`
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new StorageError(
-        `Failed to delete from Blob: ${response.status}`,
-        'deleteResult'
-      );
-    }
+    await del(pathnameOrUrl, { token: blobToken });
 
   } catch (error) {
     if (error instanceof StorageError) {
@@ -118,43 +92,29 @@ export async function deleteResult(pathname) {
 }
 
 /**
- * Get a signed URL for a Blob file
- * 
+ * Get a URL for a Blob file (files are public, so this resolves the
+ * permanent public URL for the given pathname)
+ *
  * @param {string} pathname - Path/name of the file
- * @param {number} [expiresIn] - Expiration time in seconds (default: 3600)
- * @returns {Promise<string>} Signed URL
- * @throws {StorageError} If URL generation fails
+ * @param {number} [_expiresIn] - Unused (kept for API compatibility)
+ * @returns {Promise<string>} Public URL
+ * @throws {StorageError} If file not found
  */
-export async function getSignedURL(pathname, expiresIn = 3600) {
+export async function getSignedURL(pathname, _expiresIn = 3600) {
   try {
-    const blobToken = getEnv().blobToken();
+    const blobToken = getEnv.blobToken();
 
     if (!blobToken) {
       throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'getSignedURL');
     }
 
-    // Vercel Blob doesn't have built-in signed URLs in the same way as S3
-    // We'll return the public URL directly
-    // For private files, you'd need to implement additional auth checks
+    const meta = await head(pathname, { token: blobToken });
 
-    const response = await fetch(
-      blobBaseUrl + '/' + encodeURIComponent(pathname),
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${blobToken}`
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new StorageError(
-        `Failed to get file from Blob: ${response.status}`,
-        'getSignedURL'
-      );
+    if (!meta) {
+      throw new StorageError('File not found', 'getSignedURL');
     }
 
-    return `${blobBaseUrl}/${pathname}`;
+    return meta.url;
 
   } catch (error) {
     if (error instanceof StorageError) {
@@ -166,27 +126,19 @@ export async function getSignedURL(pathname, expiresIn = 3600) {
 
 /**
  * Check if a file exists in storage
- * 
+ *
  * @param {string} pathname - Path/name of the file
  * @returns {Promise<boolean>} True if file exists
  */
 export async function fileExists(pathname) {
   try {
-    const blobToken = getEnv().blobToken();
+    const blobToken = getEnv.blobToken();
 
     if (!blobToken) return false;
 
-    const response = await fetch(
-      blobBaseUrl + '/' + encodeURIComponent(pathname),
-      {
-        method: 'HEAD',
-        headers: {
-          'Authorization': `Bearer ${blobToken}`
-        }
-      }
-    );
+    const meta = await head(pathname, { token: blobToken });
 
-    return response.ok;
+    return Boolean(meta);
   } catch {
     return false;
   }
@@ -194,36 +146,28 @@ export async function fileExists(pathname) {
 
 /**
  * Get file metadata from Blob storage
- * 
+ *
  * @param {string} pathname - Path/name of the file
  * @returns {Promise<{size: number, contentType: string, lastModified: Date}>}
  */
 export async function getFileInfo(pathname) {
   try {
-    const blobToken = getEnv().blobToken();
+    const blobToken = getEnv.blobToken();
 
     if (!blobToken) {
       throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'getFileInfo');
     }
 
-    const response = await fetch(
-      blobBaseUrl + '/' + encodeURIComponent(pathname),
-      {
-        method: 'HEAD',
-        headers: {
-          'Authorization': `Bearer ${blobToken}`
-        }
-      }
-    );
+    const meta = await head(pathname, { token: blobToken });
 
-    if (!response.ok) {
+    if (!meta) {
       throw new StorageError('File not found', 'getFileInfo');
     }
 
     return {
-      size: parseInt(response.headers.get('content-length') || '0', 10),
-      contentType: response.headers.get('content-type') || 'application/octet-stream',
-      lastModified: new Date(response.headers.get('last-modified') || Date.now())
+      size: meta.size || 0,
+      contentType: meta.contentType || 'application/octet-stream',
+      lastModified: meta.uploadedAt ? new Date(meta.uploadedAt) : new Date()
     };
   } catch (error) {
     if (error instanceof StorageError) {

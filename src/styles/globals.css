@@ -105,6 +105,29 @@ input {
   border: 1px solid var(--border-color);
 }
 
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition);
+}
+
+.back-link:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
 .app-header h1 {
   font-size: 1.75rem;
   font-weight: 800;
@@ -1336,5 +1359,253 @@ input {
 
   .upload-icon {
     font-size: 2rem;
+  }
+}
+
+/* ============================================
+   Auth Pages (Sign In & Error)
+   ============================================ */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  padding: 1rem;
+}
+
+.auth-page-card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.auth-page-header {
+  margin-bottom: 2rem;
+}
+
+.auth-page-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-bottom: 0.25rem;
+}
+
+.auth-page-header p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.auth-page-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.auth-page-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border: none;
+  text-decoration: none;
+}
+
+.auth-page-button.google {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+}
+
+.auth-page-button.google:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-secondary);
+}
+
+.auth-page-button.primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.auth-page-button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.auth-page-button.secondary {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 2px solid var(--border-color);
+}
+
+.auth-page-button.secondary:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-tertiary);
+}
+
+.auth-page-icon {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.auth-page-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.auth-page-divider::before,
+.auth-page-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.auth-page-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.auth-page-form input {
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  transition: all var(--transition);
+  background: var(--bg-primary);
+}
+
+.auth-page-form input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.auth-page-form button {
+  padding: 0.875rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.auth-page-form button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.auth-page-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-page-error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.auth-page-error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.auth-page-error-message {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5rem;
+}
+
+.auth-page-error-message p {
+  margin: 0;
+}
+
+.auth-page-error-code {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem !important;
+}
+
+.auth-page-success {
+  background: #f0fdf4;
+  color: #166534;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.auth-page-success span {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.auth-page-success p {
+  margin: 0.25rem 0;
+}
+
+.auth-page-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.auth-page-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.auth-page-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.auth-page-footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color var(--transition);
+}
+
+.auth-page-footer a:hover {
+  color: var(--color-primary);
+}
+
+@media (max-width: 480px) {
+  .auth-page-card {
+    padding: 1.5rem;
+  }
+
+  .auth-page-header h1 {
+    font-size: 1.5rem;
   }
 }

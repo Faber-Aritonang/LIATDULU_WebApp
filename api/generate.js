@@ -166,7 +166,7 @@ export default async function handler(req, res) {
       modelBuffer,
       productBuffer: compositeBuffer,
       ratio,
-      apiKey: getEnv().bynaraApiKey()
+      apiKey: getEnv.bynaraApiKey()
     });
 
     // 11. Trim black bars from result

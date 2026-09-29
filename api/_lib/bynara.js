@@ -160,10 +160,13 @@ export async function generateFitting({ modelBuffer, productBuffer, ratio, apiKe
  */
 export async function checkBynaraHealth(apiKey) {
   const start = Date.now();
-  
+
   try {
-    const response = await fetch(`${BYNARA_API_BASE}/models`, {
-      method: 'GET',
+    // POST ke /edits dengan body kosong untuk membedakan 401 (auth salah)
+    // dari 400 (endpoint hidup, request memang tidak valid).
+    // Endpoint /models tidak tersedia di Bynara Router (404).
+    const response = await fetch(`${BYNARA_API_BASE}/edits`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey || process.env.BYNARA_API_KEY}`
       },
@@ -172,16 +175,21 @@ export async function checkBynaraHealth(apiKey) {
 
     const responseTime = Date.now() - start;
 
-    if (!response.ok) {
-      return { healthy: false, responseTime, error: 'API returned error' };
+    // 400 = endpoint hidup & API key diterima (request memang kosong/invalid)
+    if (response.status === 401 || response.status === 403) {
+      return { healthy: false, responseTime, error: 'API key invalid or unauthorized' };
+    }
+
+    if (response.status === 404) {
+      return { healthy: false, responseTime, error: 'API endpoint not found (check BYNARA_API_BASE)' };
     }
 
     return { healthy: true, responseTime };
   } catch (error) {
-    return { 
-      healthy: false, 
-      responseTime: Date.now() - start, 
-      error: error.message 
+    return {
+      healthy: false,
+      responseTime: Date.now() - start,
+      error: error.message
     };
   }
 }

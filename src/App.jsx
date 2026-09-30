@@ -200,6 +200,15 @@ function App() {
             <ErrorBoundary>
               {status === 'processing' ? (
                 <ResultCanvasSkeleton />
+              ) : status === 'error' && error ? (
+                <div className="result-error">
+                  <div className="result-error-icon">⚠️</div>
+                  <h3>Gagal Membuat Hasil Fitting</h3>
+                  <p className="result-error-message">{error}</p>
+                  <button className="generate-button" onClick={handleGenerate}>
+                    🔄 Coba Lagi
+                  </button>
+                </div>
               ) : result?.imageUrl ? (
                 <ResultCanvas
                   imageUrl={result.imageUrl}

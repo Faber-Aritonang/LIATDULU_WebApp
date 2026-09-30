@@ -7,6 +7,31 @@
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS, PROGRESS_MESSAGES, ERROR_MESSAGES } from '../lib/constants.js';
 
+/**
+ * Map raw provider/API error messages to user-friendly Indonesian text.
+ * Unknown messages are passed through as-is.
+ */
+const FRIENDLY_ERRORS = [
+  [/image model is unavailable/i,
+    'Layanan AI sedang tidak tersedia. Coba lagi beberapa saat lagi.'],
+  [/rate limit|too many requests/i,
+    'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.'],
+  [/unauthorized|api key|forbidden/i,
+    'Konfigurasi server bermasalah. Hubungi administrator.'],
+  [/quota|billing|credit/i,
+    'Kuota layanan AI habis. Hubungi administrator.'],
+  [/timeout|aborted|network/i,
+    'Koneksi ke layanan AI terputus. Coba lagi.'],
+];
+
+function toFriendlyMessage(rawMessage) {
+  const message = String(rawMessage || '');
+  for (const [pattern, friendly] of FRIENDLY_ERRORS) {
+    if (pattern.test(message)) return friendly;
+  }
+  return message || ERROR_MESSAGES.PROCESSING_FAILED;
+}
+
 export default function useGenerate() {
   const [status, setStatus] = useState('idle'); // idle | uploading | processing | done | error
   const [progress, setProgress] = useState(0);
@@ -61,7 +86,7 @@ export default function useGenerate() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || 'Gagal memproses gambar');
+        throw new Error(toFriendlyMessage(errorData.error?.message));
       }
 
       const data = await response.json();

@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   try {
     // Get session
-    const session = await getSession();
+    const session = await getSession(req);
     
     if (!session || !session.user) {
       res.status(401).json({ error: { code: 'AUTH_REQUIRED', message: 'Authentication required' } });

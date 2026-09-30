@@ -59,20 +59,31 @@ async function parseForm(req) {
 /**
  * Get client identifier for rate limiting
  * 
- * @param {Request} req - Incoming request
+ * @param {Request|IncomingMessage} req - Incoming request
  * @returns {string} Identifier (userId from session or IP)
  */
 function getClientIdentifier(req) {
+  // Support both Web Request API (req.headers.get) and
+  // Node.js IncomingMessage (req.headers as plain object)
+  const headers = req.headers || {};
+  const getHeader = (name) => {
+    if (typeof headers.get === 'function') {
+      return headers.get(name);
+    }
+    const value = headers[name] ?? headers[name.toLowerCase()];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
   // In Vercel, we can get IP from headers
-  const forwarded = req.headers.get('x-forwarded-for');
-  const realIp = req.headers.get('x-real-ip');
+  const forwarded = getHeader('x-forwarded-for');
+  const realIp = getHeader('x-real-ip');
   
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    return String(forwarded).split(',')[0].trim();
   }
   
   if (realIp) {
-    return realIp.trim();
+    return String(realIp).trim();
   }
   
   return 'unknown';
@@ -217,8 +228,7 @@ export default async function handler(req, res) {
         error instanceof RateLimitError ||
         error instanceof BynaraAPIError ||
         error instanceof StorageError) {
-      const { statusCode, toResponse } = error;
-      res.status(statusCode).json(toResponse());
+      res.status(error.statusCode).json(error.toResponse());
       return;
     }
 

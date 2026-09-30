@@ -80,7 +80,6 @@ export class BynaraAPIError extends AppError {
     }
 
     super(message, status, 'BYNARA_API_ERROR', details);
-    this.status = status;
     this.requestId = requestId;
   }
 }

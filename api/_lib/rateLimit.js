@@ -72,39 +72,36 @@ async function checkRateLimitKV(key, limit, windowMs, resetAt, kvUrl, kvToken) {
   const now = Date.now();
   
   try {
-    // Use KV atomic operations for thread-safe rate limiting
-    const response = await fetch(`${kvUrl}/incrby`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${kvToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        key,
-        increment: 1,
-        expirationTtl: Math.ceil(windowMs / 1000)
-      })
-    });
+    // Vercel KV / Upstash REST API: command encoded in the URL path.
+    // INCR the counter and set expiry only on the first hit (NX+EX) so
+    // the window doesn't reset on every request.
+    const headers = { Authorization: `Bearer ${kvToken}` };
+    const encodedKey = encodeURIComponent(key);
 
-    if (!response.ok) {
-      throw new Error(`KV error: ${response.status}`);
+    const incrResponse = await fetch(`${kvUrl}/incrby/${encodedKey}/1`, { headers });
+
+    if (!incrResponse.ok) {
+      throw new Error(`KV error: ${incrResponse.status}`);
     }
 
-    const data = await response.json();
-    const count = data.result || 1;
-    
+    const incrData = await incrResponse.json();
+    const count = typeof incrData.result === 'number' ? incrData.result : 1;
+
+    // First request in the window: start the TTL countdown
+    if (count === 1) {
+      await fetch(
+        `${kvUrl}/expire/${encodedKey}/${Math.ceil(windowMs / 1000)}/nx`,
+        { headers }
+      ).catch(() => {});
+    }
+
     const allowed = count <= limit;
     const remaining = Math.max(0, limit - count);
 
     // Get TTL for exact reset time
     let actualResetAt = resetAt;
     try {
-      const ttlResponse = await fetch(`${kvUrl}/ttl`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${kvToken}`
-        }
-      });
+      const ttlResponse = await fetch(`${kvUrl}/ttl/${encodedKey}`, { headers });
       
       if (ttlResponse.ok) {
         const ttlData = await ttlResponse.json();

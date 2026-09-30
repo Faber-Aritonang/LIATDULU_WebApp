@@ -112,55 +112,52 @@ export async function createCompositeImage(imageBuffers, options = {}) {
   const compositeWidth = cols * tileSize;
   const compositeHeight = rows * tileSize;
 
-  // Process each image
-  const processedImages = await Promise.all(
+  // Process each image into a finished JPEG tile buffer
+  const tileBuffers = await Promise.all(
     imageBuffers.map(async (buffer, index) => {
       try {
-        // Resize to tile size
-        const processed = await sharp(buffer)
+        // Resize to tile size and materialize to Buffer
+        return await sharp(buffer)
           .resize(tileSize, tileSize, { fit: 'cover', position: 'center' })
-          .toFormat('jpeg', { quality: 92 });
-        return { buffer: processed, index };
+          .jpeg({ quality: 92 })
+          .toBuffer();
       } catch (error) {
         console.warn(`Failed to process image ${index}:`, error);
-        // Return empty tile as placeholder
-        return { 
-          buffer: await sharp({
-            create: {
-              width: tileSize,
-              height: tileSize,
-              channels: 4,
-              background: { r: 0, g: 0, b: 0, alpha: 0 }
-            }
-          }).jpeg({ quality: 92 }), 
-          index 
-        };
+        // Return white tile as placeholder
+        return await sharp({
+          create: {
+            width: tileSize,
+            height: tileSize,
+            channels: 3,
+            background: { r: 255, g: 255, b: 255 }
+          }
+        })
+          .jpeg({ quality: 92 })
+          .toBuffer();
       }
     })
   );
 
-  // Create composite using composite operation
-  let composite = sharp({
+  // Build all composite entries, then apply them in ONE composite() call
+  // (calling composite() repeatedly would overwrite the previous entries)
+  const compositeEntries = tileBuffers.map((input, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    return { input, top: row * tileSize, left: col * tileSize };
+  });
+
+  // Create composite canvas and return as JPEG buffer
+  return await sharp({
     create: {
       width: compositeWidth,
       height: compositeHeight,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
+      channels: 3,
+      background: { r: 255, g: 255, b: 255 }
     }
-  });
-
-  // Composite each image at its grid position
-  for (const { buffer, index } of processedImages) {
-    const row = Math.floor(index / cols);
-    const col = index % cols;
-    
-    composite = composite.composite([
-      { input: buffer, top: row * tileSize, left: col * tileSize }
-    ]);
-  }
-
-  // Return as JPEG
-  return await composite.jpeg({ quality: 92, background: { r: 0, g: 0, b: 0 } }).toBuffer();
+  })
+    .composite(compositeEntries)
+    .jpeg({ quality: 92 })
+    .toBuffer();
 }
 
 /**

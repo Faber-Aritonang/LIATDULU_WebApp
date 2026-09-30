@@ -15,8 +15,11 @@ const RATIO_TO_SIZE = {
 };
 
 // Bynara API configuration
-const BYNARA_API_BASE = 'https://api-images.bynara.id/v1/images';
-const DEFAULT_MODEL = 'qwen-image-2.0-pro';
+// Note: generation AND result download both live on router.bynara.id.
+// Image models available on PAYG: agnes-image-2.0-flash (Rp10/1K img),
+// agnes-image-2.1-flash (Rp20/1K img), gpt-image-2 (Rp50/1K img).
+const BYNARA_API_BASE = 'https://router.bynara.id/v1/images';
+const DEFAULT_MODEL = process.env.BYNARA_IMAGE_MODEL || 'agnes-image-2.1-flash';
 const DEFAULT_TIMEOUT = 120000; // 2 minutes
 const MAX_RETRIES = 3;
 
@@ -46,7 +49,13 @@ digunakan secara harmonis pada orang tersebut.`;
 
 /**
  * Create FormData for Bynara API request
- * 
+ *
+ * Verified against the live API (2026-09):
+ * - Multiple input images are sent as REPEATED `image` multipart fields
+ *   (the Go backend unmarshals `image []string`). First image = person,
+ *   second image = product composite.
+ * - `size`, `n`, `response_format` are supported.
+ *
  * @param {Buffer} modelBuffer - Model/image buffer
  * @param {Buffer} productBuffer - Product composite buffer
  * @param {string} ratio - Output aspect ratio
@@ -54,19 +63,17 @@ digunakan secara harmonis pada orang tersebut.`;
  */
 export function createFormData(modelBuffer, productBuffer, ratio) {
   const form = new FormData();
-  
+
   form.append('model', DEFAULT_MODEL);
   form.append('prompt', buildPrompt());
   form.append('size', getSizeFromRatio(ratio));
-  form.append('prompt_extend', 'true');
-  form.append('watermark', 'false');
   form.append('n', '1');
   form.append('response_format', 'b64_json');
-  
-  // Append images as blobs
+
+  // Repeated `image` fields: person first, products second
   form.append('image', new Blob([modelBuffer], { type: 'image/jpeg' }), 'model.jpg');
-  form.append('image2', new Blob([productBuffer], { type: 'image/jpeg' }), 'products.jpg');
-  
+  form.append('image', new Blob([productBuffer], { type: 'image/jpeg' }), 'products.jpg');
+
   return form;
 }
 
@@ -135,21 +142,48 @@ export async function generateFitting({ modelBuffer, productBuffer, ratio, apiKe
 
   const data = await response.json();
 
-  if (!data || !data.data || !data.data[0]) {
+  const first = data?.data?.[0];
+  if (!first) {
     throw new BynaraAPIError(
       response.status,
       'Invalid response from Bynara API'
     );
   }
 
-  // Get base64 result
-  const b64Image = data.data[0].b64_json;
+  // Preferred: base64 payload (response_format=b64_json)
+  if (first.b64_json) {
+    return `data:image/png;base64,${first.b64_json}`;
+  }
 
-  // Convert to data URL
-  const imageData = Buffer.from(b64Image, 'base64');
-  const dataURL = `data:image/jpeg;base64,${b64Image}`;
+  // Fallback: relative URL to the generated image; download with auth
+  // and convert to a data URL. Result URLs only resolve on the router host.
+  if (first.url) {
+    const downloadUrl = first.url.startsWith('http')
+      ? first.url
+      : `${BYNARA_API_BASE.replace(/\/v1\/images$/, '')}${first.url}`;
 
-  return dataURL;
+    const downloadResponse = await fetch(downloadUrl, {
+      headers: {
+        Authorization: `Bearer ${apiKey || process.env.BYNARA_API_KEY}`,
+      },
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
+    });
+
+    if (!downloadResponse.ok) {
+      throw new BynaraAPIError(
+        downloadResponse.status,
+        `Failed to download generated image: ${downloadUrl}`
+      );
+    }
+
+    const buffer = Buffer.from(await downloadResponse.arrayBuffer());
+    return `data:image/png;base64,${buffer.toString('base64')}`;
+  }
+
+  throw new BynaraAPIError(
+    response.status,
+    'Bynara response contained neither b64_json nor url'
+  );
 }
 
 /**

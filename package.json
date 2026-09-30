@@ -13,8 +13,9 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@vercel/blob": "^0.21.0",
+    "@vercel/blob": "^2.8.0",
     "@vercel/kv": "^2.0.0",
+    "@vercel/oidc": "^3.8.9",
     "@vercel/postgres": "^0.2.0",
     "formidable": "^3.5.4",
     "jose": "^6.2.12",

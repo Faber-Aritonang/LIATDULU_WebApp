@@ -183,8 +183,10 @@ export default async function handler(req, res) {
     // 11. Trim black bars from result
     const trimmedUrl = await trimBlackBarsFromBase64(resultUrl);
 
-    // 12. Save to Vercel Blob
-    const savedResult = await saveResult(trimmedUrl, userId || 'anonymous');
+    // 12. Save to Vercel Blob (pass per-request OIDC token for Blob auth
+    // when BLOB_READ_WRITE_TOKEN is not configured)
+    const oidcToken = req.headers['x-vercel-oidc-token'];
+    const savedResult = await saveResult(trimmedUrl, userId || 'anonymous', oidcToken);
 
     // 13. Save to history (if user authenticated)
     let historyId = null;

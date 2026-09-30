@@ -13,14 +13,47 @@ import { getEnv, BLOB_CONFIG } from './env.js';
 const BLOB_BASE_PATH = BLOB_CONFIG.basePath;
 
 /**
+ * Resolve @vercel/blob auth options (client v2).
+ *
+ * Prefers the classic BLOB_READ_WRITE_TOKEN. Otherwise uses OIDC auth:
+ * BLOB_STORE_ID (available as project env) + an OIDC token — either the
+ * per-request `x-vercel-oidc-token` header or the auto-refreshing token
+ * from @vercel/oidc.
+ *
+ * @param {string} [oidcToken] - Per-request Vercel OIDC token
+ * @returns {{token: string}|{storeId: string, oidcToken?: string}}
+ * @throws {StorageError} If no credential is available
+ */
+function getBlobAuth(oidcToken) {
+  const token = getEnv.blobToken();
+  if (token) {
+    return { token };
+  }
+
+  const storeId = process.env.BLOB_STORE_ID;
+  if (storeId) {
+    const resolved = oidcToken || process.env.VERCEL_OIDC_TOKEN;
+    return resolved
+      ? { storeId, oidcToken: resolved }
+      : { storeId };
+  }
+
+  throw new StorageError(
+    'Neither BLOB_READ_WRITE_TOKEN nor BLOB_STORE_ID is configured',
+    'blobAuth'
+  );
+}
+
+/**
  * Save result image to Vercel Blob storage
  *
  * @param {string} base64DataURL - Base64 data URL of the image
  * @param {string} [userId] - Optional user ID for organizing files
+ * @param {string} [oidcToken] - Per-request Vercel OIDC token
  * @returns {Promise<{url: string, pathname: string}>} Object with URL and pathname
  * @throws {StorageError} If upload fails
  */
-export async function saveResult(base64DataURL, userId) {
+export async function saveResult(base64DataURL, userId, oidcToken) {
   try {
     // Extract base64 data
     const match = base64DataURL.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -38,19 +71,12 @@ export async function saveResult(base64DataURL, userId) {
     const prefix = userId ? `${userId}/${timestamp}` : `${timestamp}`;
     const pathname = `${BLOB_BASE_PATH}/${prefix}.png`;
 
-    // Get blob token
-    const blobToken = getEnv.blobToken();
-
-    if (!blobToken) {
-      throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'saveResult');
-    }
-
-    // Upload via official client
+    // Upload via official client (token or OIDC storeId)
     const uploadResult = await put(pathname, buffer, {
       access: 'public',
       contentType: `image/${mimeType}`,
       addRandomSuffix: false,
-      token: blobToken
+      ...getBlobAuth(oidcToken)
     });
 
     return {
@@ -70,19 +96,13 @@ export async function saveResult(base64DataURL, userId) {
  * Delete a file from Vercel Blob storage
  *
  * @param {string} pathnameOrUrl - Path/name or full URL of the file to delete
+ * @param {string} [oidcToken] - Per-request Vercel OIDC token
  * @returns {Promise<void>}
  * @throws {StorageError} If deletion fails
  */
-export async function deleteResult(pathnameOrUrl) {
+export async function deleteResult(pathnameOrUrl, oidcToken) {
   try {
-    const blobToken = getEnv.blobToken();
-
-    if (!blobToken) {
-      throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'deleteResult');
-    }
-
-    await del(pathnameOrUrl, { token: blobToken });
-
+    await del(pathnameOrUrl, getBlobAuth(oidcToken));
   } catch (error) {
     if (error instanceof StorageError) {
       throw error;
@@ -102,13 +122,7 @@ export async function deleteResult(pathnameOrUrl) {
  */
 export async function getSignedURL(pathname, _expiresIn = 3600) {
   try {
-    const blobToken = getEnv.blobToken();
-
-    if (!blobToken) {
-      throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'getSignedURL');
-    }
-
-    const meta = await head(pathname, { token: blobToken });
+    const meta = await head(pathname, getBlobAuth());
 
     if (!meta) {
       throw new StorageError('File not found', 'getSignedURL');
@@ -132,11 +146,7 @@ export async function getSignedURL(pathname, _expiresIn = 3600) {
  */
 export async function fileExists(pathname) {
   try {
-    const blobToken = getEnv.blobToken();
-
-    if (!blobToken) return false;
-
-    const meta = await head(pathname, { token: blobToken });
+    const meta = await head(pathname, getBlobAuth());
 
     return Boolean(meta);
   } catch {
@@ -152,13 +162,7 @@ export async function fileExists(pathname) {
  */
 export async function getFileInfo(pathname) {
   try {
-    const blobToken = getEnv.blobToken();
-
-    if (!blobToken) {
-      throw new StorageError('BLOB_READ_WRITE_TOKEN not configured', 'getFileInfo');
-    }
-
-    const meta = await head(pathname, { token: blobToken });
+    const meta = await head(pathname, getBlobAuth());
 
     if (!meta) {
       throw new StorageError('File not found', 'getFileInfo');

@@ -53,6 +53,29 @@ export class AppError extends Error {
 }
 
 /**
+ * Extract a human-readable message from a Bynara API error body.
+ * Handles shapes like {message}, {error: "..."}, and
+ * {error: {type, message}} — always returns a string.
+ *
+ * @param {Object} parsed - Parsed error body
+ * @param {string} fallback - Default message if nothing usable found
+ * @returns {string}
+ */
+function extractApiMessage(parsed, fallback) {
+  if (typeof parsed?.message === 'string' && parsed.message) {
+    return parsed.message;
+  }
+  const err = parsed?.error;
+  if (typeof err === 'string' && err) {
+    return err;
+  }
+  if (typeof err?.message === 'string' && err.message) {
+    return err.message;
+  }
+  return fallback;
+}
+
+/**
  * Error thrown when Bynara API request fails
  */
 export class BynaraAPIError extends AppError {
@@ -68,14 +91,14 @@ export class BynaraAPIError extends AppError {
     if (typeof body === 'string') {
       try {
         const parsed = JSON.parse(body);
-        message = parsed.message || parsed.error || message;
+        message = extractApiMessage(parsed, message);
         details = { ...parsed, requestId };
       } catch {
         details = { body, requestId };
         message = body || message;
       }
-    } else if (typeof body === 'object') {
-      message = body.message || body.error || message;
+    } else if (body && typeof body === 'object') {
+      message = extractApiMessage(body, message);
       details = { ...body, requestId };
     }
 
